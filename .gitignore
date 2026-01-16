@@ -1,0 +1,28 @@
+# Build artifacts
+**/target/
+**/build/
+
+# Rust
+**/*.rs.bk
+Cargo.lock
+
+# ESP-IDF
+**/sdkconfig
+**/sdkconfig.old
+**/dependencies.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Environment
+.env
+*.local
+
+# Logs
+*.log
+
+# Generated
+**/managed_components/
