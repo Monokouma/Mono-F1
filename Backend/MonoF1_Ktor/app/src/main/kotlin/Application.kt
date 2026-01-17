@@ -9,6 +9,7 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
+import io.ktor.server.websocket.*
 import org.koin.ktor.plugin.Koin
 import org.slf4j.event.Level
 
@@ -21,6 +22,13 @@ fun main() {
 fun Application.module() {
     install(CallLogging) {
         level = Level.INFO
+    }
+
+    install(WebSockets) {
+        pingPeriodMillis = 15000
+        timeoutMillis = 15000
+        maxFrameSize = Long.MAX_VALUE
+        masking = false
     }
 
     install(Koin) {

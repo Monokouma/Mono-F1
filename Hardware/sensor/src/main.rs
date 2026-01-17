@@ -4,29 +4,21 @@ use esp_idf_svc::hal::adc::{attenuation::DB_11, oneshot::{config::AdcChannelConf
 use esp_idf_svc::hal::peripherals::Peripherals;
 use std::thread;
 use std::time::Duration;
-use esp_idf_svc::wifi::{EspWifi, ClientConfiguration, Configuration};
+use esp_idf_svc::wifi::{EspWifi, ClientConfiguration, Configuration, AuthMethod};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
-
-use esp_idf_svc::http::client::{Configuration as ApiConfig, EspHttpConnection};
-use embedded_svc::http::client::Client;
+use embedded_svc::ws::FrameType;
+use esp_idf_svc::ws::client::{EspWebSocketClient, EspWebSocketClientConfig, WebSocketEventType};
 
 fn main() {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let peripherals = Peripherals::take().unwrap();
-
     let sys_loop = EspSystemEventLoop::take().unwrap();
     let nvs = EspDefaultNvsPartition::take().unwrap();
 
-    let mut wifi = EspWifi::new(
-        peripherals.modem,
-        sys_loop,
-        Some(nvs)
-    ).unwrap();
-
-    use esp_idf_svc::wifi::AuthMethod;
+    let mut wifi = EspWifi::new(peripherals.modem, sys_loop, Some(nvs)).unwrap();
 
     let wifi_config = Configuration::Client(ClientConfiguration {
         ssid: config::WIFI_SSID.try_into().unwrap(),
@@ -39,41 +31,54 @@ fn main() {
     wifi.start().unwrap();
     wifi.connect().unwrap();
 
-    log::info!("Connecté au WiFi !");
-
-    match check_health() {
-        Ok(_) => log::info!("Health check OK"),
-        Err(e) => log::error!("Health check failed: {:?}", e),
+    while !wifi.is_connected().unwrap() {
+        thread::sleep(Duration::from_millis(100));
     }
+    log::info!("Connected to WiFi !");
+
+    let auth_header = format!("Authorization {}", config::API_KEY);
+
+    let ws_config = EspWebSocketClientConfig {
+        ..Default::default()
+    };
+
+    let mut ws = EspWebSocketClient::new(
+        config::SERVER_URL,
+        &ws_config,
+        Duration::from_secs(10),
+        |event| {
+            if let Ok(event) = event {
+                match event.event_type {
+                    WebSocketEventType::Connected => log::info!("WS connected"),
+                    WebSocketEventType::Disconnected => log::info!("WS disconnected"),
+                    WebSocketEventType::Text(text) => log::info!("Received: {}", text),
+                    _ => {}
+                }
+            }
+        }
+    ).unwrap();
+
+    log::info!("WebSocket initialized.");
 
     let adc = AdcDriver::new(peripherals.adc1).unwrap();
-
-    let config = AdcChannelConfig {
-
+    let adc_config = AdcChannelConfig {
         attenuation: DB_11,
         ..Default::default()
     };
-    let mut channel = AdcChannelDriver::new(&adc, peripherals.pins.gpio34, &config).unwrap();
+    let mut channel = AdcChannelDriver::new(&adc, peripherals.pins.gpio34, &adc_config).unwrap();
 
-    log::info!("LDR started !");
+    let mut last_value: u16 = 0;
 
     loop {
         let value: u16 = adc.read(&mut channel).unwrap();
 
-        log::info!("Luminosity: {}", value);
+        if (value as i32 - last_value as i32).abs() > 100 {
+            let json = format!(r#"{{"value":{}}}"#, value);
+            ws.send(FrameType::Text(false), json.as_bytes()).ok();
+            log::info!("Send: {}", json);
+            last_value = value;
+        }
 
         thread::sleep(Duration::from_millis(100));
     }
 }
-
-fn check_health() -> anyhow::Result<()> {
-    let config = ApiConfig::default();
-    let mut client = Client::wrap(EspHttpConnection::new(&config)?);
-
-    let response = client.get("http://192.168.1.20:8080/api/health")?.submit()?;
-
-    log::info!("Status: {}", response.status());
-
-    Ok(())
-}
-

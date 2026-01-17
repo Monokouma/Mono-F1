@@ -1,0 +1,4 @@
+package sensor
+
+interface SensorRepository {
+}
