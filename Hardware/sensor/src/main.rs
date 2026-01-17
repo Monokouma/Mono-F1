@@ -36,8 +36,6 @@ fn main() {
     }
     log::info!("Connected to WiFi !");
 
-    let auth_header = format!("Authorization {}", config::API_KEY);
-
     let ws_config = EspWebSocketClientConfig {
         ..Default::default()
     };

@@ -15,7 +15,7 @@ fun Route.getRoutes() {
 
     webSocket("/ws/sensor") {
         println("WebSocket connecté")
-        val authorization = call.request.headers["Authorization"]
+        val authorization = call.request.queryParameters["api_key"]
         println("Auth: $authorization")
 
         for (frame in incoming) {
@@ -25,7 +25,7 @@ fun Route.getRoutes() {
                     println("JSON: $json")
 
                     processSensorDataUseCase.invoke(authorization, json)
-                        .onSuccess { data ->
+                        .onSuccess {
                             send(Frame.Text("OK"))
                         }
                         .onFailure { e ->
