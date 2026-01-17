@@ -7,10 +7,6 @@ use std::time::Duration;
 use esp_idf_svc::wifi::{EspWifi, ClientConfiguration, Configuration};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
-use std::net::TcpStream;
-use std::io::Write;
-use std::ffi::CString;
-use esp_idf_svc::sys::{mdns_init, mdns_hostname_set, mdns_instance_name_set};
 
 fn main() {
     esp_idf_svc::sys::link_patches();
@@ -42,15 +38,6 @@ fn main() {
 
     log::info!("Connecté au WiFi !");
 
-    unsafe {
-        mdns_init();
-        let hostname = CString::new("capteur").unwrap();
-        mdns_hostname_set(hostname.as_ptr());
-        let instance = CString::new("MonoF1 Capteur").unwrap();
-        mdns_instance_name_set(instance.as_ptr());
-    }
-
-    log::info!("mDNS: capteur.local");
 
     let adc = AdcDriver::new(peripherals.adc1).unwrap();
 
