@@ -8,6 +8,9 @@ use esp_idf_svc::wifi::{EspWifi, ClientConfiguration, Configuration};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 
+use esp_idf_svc::http::client::{Configuration as ApiConfig, EspHttpConnection};
+use embedded_svc::http::client::Client;
+
 fn main() {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
@@ -38,6 +41,10 @@ fn main() {
 
     log::info!("Connecté au WiFi !");
 
+    match check_health() {
+        Ok(_) => log::info!("Health check OK"),
+        Err(e) => log::error!("Health check failed: {:?}", e),
+    }
 
     let adc = AdcDriver::new(peripherals.adc1).unwrap();
 
@@ -50,18 +57,23 @@ fn main() {
 
     log::info!("LDR started !");
 
-    let mut last_value: u16 = 0;
-
     loop {
         let value: u16 = adc.read(&mut channel).unwrap();
 
-        if (value as i32 - last_value as i32).abs() > 100 {
-            log::info!("Changement détecté: {} -> {}", last_value, value);
-            last_value = value;
-        }
-
+        log::info!("Luminosity: {}", value);
 
         thread::sleep(Duration::from_millis(100));
     }
+}
+
+fn check_health() -> anyhow::Result<()> {
+    let config = ApiConfig::default();
+    let mut client = Client::wrap(EspHttpConnection::new(&config)?);
+
+    let response = client.get("http://192.168.1.20:8080/api/health")?.submit()?;
+
+    log::info!("Status: {}", response.status());
+
+    Ok(())
 }
 

@@ -1,0 +1,41 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '2.0.21' apply false
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.21' apply false
+}
+
+allprojects {
+    group = 'com.despaircorp'
+    version = '1.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'org.jetbrains.kotlin.jvm'
+
+    kotlin {
+        jvmToolchain(21)
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    dependencies {
+        testImplementation "org.jetbrains.kotlin:kotlin-test"
+        testImplementation "io.mockk:mockk:1.13.13"
+        testImplementation "com.willowtreeapps.assertk:assertk:0.28.1"
+        testImplementation "app.cash.turbine:turbine:1.2.1"
+        testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0"
+        testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+    }
+}
+
+ext {
+    ktor_version = '2.3.12'
+    koin_version = '3.5.0'
+    coroutines_version = '1.9.0'
+    exposed_version = '0.45.0'
+}
