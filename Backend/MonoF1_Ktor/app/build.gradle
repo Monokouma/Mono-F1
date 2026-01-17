@@ -6,7 +6,7 @@ plugins {
 }
 
 application {
-    mainClass.set('com.despaircorp.ApplicationKt')
+    mainClass.set('ApplicationKt')
 }
 
 dependencies {
