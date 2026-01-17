@@ -1,9 +1,9 @@
-FROM gradle:8.5-jdk17 AS build
+FROM gradle:8.5-jdk21 AS build
 WORKDIR /app
 COPY . .
 RUN gradle shadowJar --no-daemon
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/app/build/libs/*-all.jar app.jar
 EXPOSE 8080
