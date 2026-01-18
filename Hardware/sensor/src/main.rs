@@ -70,7 +70,7 @@ fn main() {
     loop {
         let value: u16 = adc.read(&mut channel).unwrap();
 
-        if (value as i32 - last_value as i32).abs() > 100 {
+        if (value as i32 - last_value as i32).abs() > 10 {
             let json = format!(r#"{{"value":{}}}"#, value);
             ws.send(FrameType::Text(false), json.as_bytes()).ok();
             log::info!("Send: {}", json);
