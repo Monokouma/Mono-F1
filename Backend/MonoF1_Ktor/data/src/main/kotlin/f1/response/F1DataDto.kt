@@ -9,7 +9,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class F1DataDto(
-    @SerialName("R") val data: F1ContentDto?,
+    @SerialName("R") val data: F1ContentDto? = null,
     @SerialName("M") val messages: List<F1MessageDto>? = null
 )
 

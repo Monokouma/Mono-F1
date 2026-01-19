@@ -23,9 +23,9 @@ import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 
 class F1RepositoryImpl(
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
+    private val json: Json,
 ) : F1Repository {
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun negotiate(
         negociationRequest: NegociationRequest
@@ -47,41 +47,45 @@ class F1RepositoryImpl(
         }
     }
 
-
     override fun connect(connectRequest: ConnectRequest): Flow<Result<F1Entity>> = callbackFlow {
         val encodedToken = URLEncoder.encode(connectRequest.connectionToken, "UTF-8")
-        val url = "wss://livetiming.formula1.com/signalr/connect?" +
-                "transport=webSockets&" +
-                "connectionToken=$encodedToken&" +
-                "connectionData=%5B%7B%22name%22%3A%22streaming%22%7D%5D&" +
-                "clientProtocol=1.5"
 
         val job = launch {
-            httpClient.webSocket(url) {
-                val topicsJson = connectRequest.subscribeRequest.topics.joinToString(",") { "\"$it\"" }
-                send(Frame.Text("""{"H":"streaming","M":"Subscribe","A":[[$topicsJson]],"I":1}"""))
+            try {
+                val session = httpClient.webSocketSession(
+                    urlString = "wss://livetiming.formula1.com/signalr/connect?" +
+                            "transport=webSockets&" +
+                            "connectionToken=$encodedToken&" +
+                            "connectionData=%5B%7B%22name%22%3A%22streaming%22%7D%5D&" +
+                            "clientProtocol=1.5"
+                ) {
+                    header("User-Agent", "BestHTTP")
+                }
 
-                for (frame in incoming) {
+                val topicsJson = connectRequest.subscribeRequest.topics.joinToString(",") { "\"$it\"" }
+                session.send(Frame.Text("""{"H":"streaming","M":"Subscribe","A":[[$topicsJson]],"I":1}"""))
+
+                for (frame in session.incoming) {
                     if (frame is Frame.Text) {
                         val text = frame.readText()
-                        println("RAW: $text")
                         try {
                             val dto = json.decodeFromString<F1DataDto>(text)
-                            println("DTO: $dto")
                             if (dto.data != null) {
                                 trySend(Result.success(dto.toEntity()))
                             }
                         } catch (e: Exception) {
-                            println("Parse error: ${e.message}")
-                            trySend(Result.failure(e))
+                            // Ignore parse errors
                         }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("F1 WebSocket error: ${e.message}")
+                trySend(Result.failure(e))
             }
         }
 
-        awaitClose {
-            job.cancel()
-        }
+        awaitClose { job.cancel() }
     }
 }

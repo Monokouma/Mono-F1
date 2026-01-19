@@ -1,6 +1,7 @@
 import auth.ValidateApiKeyUseCase
 import car.ManageCarUseCase
-import f1.GetF1DataUseCase
+import car.config.CarsConfig
+import car.entity.CarStateEntity
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -13,19 +14,17 @@ import manager.WebSocketManager
 import org.koin.ktor.ext.inject
 import sensor.ProcessSensorDataUseCase
 
-
 fun Route.getRoutes() {
     val processSensorDataUseCase: ProcessSensorDataUseCase by inject()
     val manageCarUseCase: ManageCarUseCase by inject()
     val webSocketManager: WebSocketManager by inject()
     val validateApiKeyUseCase: ValidateApiKeyUseCase by inject()
-    val getF1DataUseCase: GetF1DataUseCase by inject()
 
     environment?.monitor?.subscribe(ApplicationStarted) {
         CoroutineScope(Dispatchers.IO).launch {
             manageCarUseCase()
                 .collect { states ->
-                    webSocketManager.updateAll(states)
+                    states?.let { webSocketManager.updateAll(it) }
                 }
         }
     }
@@ -34,41 +33,28 @@ fun Route.getRoutes() {
         call.respondText("Ow it's working")
     }
 
-    webSocket("/ws/test") {
-        try {
-            getF1DataUseCase().collect { result ->
-                result.onSuccess { f1Entity ->
-                    println("Session: ${f1Entity.sessionStatus}")
-                    println("Leader: ${f1Entity.leader?.teamName} - ${f1Entity.leader?.driverName}")
-                    send(Frame.Text("Leader: ${f1Entity.leader?.teamName}"))
-                }.onFailure { error ->
-                    println("Error: ${error.message}")
-                }
-            }
-        } catch (e: Exception) {
-            println("Connection error: ${e.message}")
-        }
-    }
-
     webSocket("/ws/cars") {
         val authorization = call.request.queryParameters["api_key"]
         val carName = call.request.queryParameters["car_name"]
 
         validateApiKeyUseCase(authorization).onFailure { e ->
             close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, e.message ?: "Error"))
+            return@webSocket
         }
 
         webSocketManager.register(
             name = carName ?: return@webSocket close(
                 reason = CloseReason(
                     code = CloseReason.Codes.VIOLATED_POLICY,
-                    message = "Error"
+                    message = "car_name required"
                 )
-            ), session = this
+            ),
+            session = this
         )
 
         try {
             for (frame in incoming) {
+                //Keep alive
             }
         } finally {
             webSocketManager.unregister(carName)
@@ -94,8 +80,58 @@ fun Route.getRoutes() {
                 else -> {}
             }
         }
-        println("WebSocket fermé")
-
     }
 
+    get("/api/test/simulate/{status}") {
+        val status = call.parameters["status"] ?: "idle"
+
+        val fakeState = when (status.lowercase()) {
+            "redbull" -> CarsConfig.CARS.mapValues { (_, teamConfig) ->
+                val isLeader = teamConfig.teamName == "Red Bull Racing"
+                CarStateEntity(
+                    isOn = isLeader,
+                    color = if (isLeader) teamConfig.color else CarsConfig.COLOR_OFF,
+                    brightness = 70
+                )
+            }
+
+            "ferrari" -> CarsConfig.CARS.mapValues { (_, teamConfig) ->
+                val isLeader = teamConfig.teamName == "Ferrari"
+                CarStateEntity(
+                    isOn = isLeader,
+                    color = if (isLeader) teamConfig.color else CarsConfig.COLOR_OFF,
+                    brightness = 70
+                )
+            }
+
+            "mercedes" -> CarsConfig.CARS.mapValues { (_, teamConfig) ->
+                val isLeader = teamConfig.teamName == "Mercedes"
+                CarStateEntity(
+                    isOn = isLeader,
+                    color = if (isLeader) teamConfig.color else CarsConfig.COLOR_OFF,
+                    brightness = 70
+                )
+            }
+
+            "mclaren" -> CarsConfig.CARS.mapValues { (_, teamConfig) ->
+                val isLeader = teamConfig.teamName == "McLaren"
+                CarStateEntity(
+                    isOn = isLeader,
+                    color = if (isLeader) teamConfig.color else CarsConfig.COLOR_OFF,
+                    brightness = 70
+                )
+            }
+
+            "off" -> CarsConfig.CARS.mapValues {
+                CarStateEntity(isOn = false, color = CarsConfig.COLOR_OFF, brightness = 70)
+            }
+
+            else -> CarsConfig.CARS.mapValues {
+                CarStateEntity(isOn = true, color = CarsConfig.COLOR_WHITE, brightness = 70)
+            }
+        }
+
+        webSocketManager.updateAll(fakeState)
+        call.respondText("Simulated: $status")
+    }
 }

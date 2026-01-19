@@ -11,8 +11,10 @@ class GetF1DataUseCase(
     private val getConnectionTokenUseCase: GetConnectionTokenUseCase
 ) {
     operator fun invoke(): Flow<Result<F1Entity>> = flow {
+        println("F1: Starting negotiate...")
         val connectionNegociation = getConnectionTokenUseCase().getOrNull()
             ?: return@flow emit(Result.failure(Exception("Negotiate connection token")))
+        println("F1: Negotiate done: $connectionNegociation")
 
         f1Repository.connect(
             ConnectRequest(

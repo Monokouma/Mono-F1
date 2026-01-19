@@ -13,11 +13,13 @@ class WebSocketManager {
 
     fun register(name: String, session: WebSocketSession) {
         connections[name] = session
+        println("🚗 Car registered: $name")
     }
 
     fun unregister(name: String) {
         connections.remove(name)
         carStates.remove(name)
+        println("🚗 Car unregistered: $name")
     }
 
     fun isConnected(name: String): Boolean = connections.containsKey(name)
@@ -30,13 +32,16 @@ class WebSocketManager {
         if (currentState != newState) {
             carStates[name] = newState
 
-            connections[name]?.send(
-                Frame.Text(Json.encodeToString(newState))
-            )
+            val json = Json.encodeToString(newState)
+            connections[name]?.let { session ->
+                session.send(Frame.Text(json))
+                println("📤 Sent to $name: $json")
+            } ?: println("⚠️ Car $name not connected, skipped")
         }
     }
 
     suspend fun updateAll(states: Map<String, CarStateEntity>) {
+        println("🔄 Updating all cars: ${states.keys}")
         states.forEach { (name, state) ->
             updateCar(name, state)
         }
