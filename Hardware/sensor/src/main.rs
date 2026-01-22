@@ -54,6 +54,7 @@ fn main() {
                 }
             }
         }
+
     ).unwrap();
 
     log::info!("WebSocket initialized.");
