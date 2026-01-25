@@ -19,6 +19,12 @@ struct CarState {
     #[serde(rename = "isOn")]
     is_on: bool,
     color: String,
+    #[serde(default = "default_brightness")]
+    brightness: u8,
+}
+
+fn default_brightness() -> u8 {
+    178
 }
 
 fn hex_to_rgb(hex: &str) -> RGB8 {
@@ -26,6 +32,14 @@ fn hex_to_rgb(hex: &str) -> RGB8 {
     let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
     let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
     RGB8::new(r, g, b)
+}
+
+fn apply_brightness(color: RGB8, brightness: u8) -> RGB8 {
+    RGB8::new(
+        ((color.r as u16 * brightness as u16) / 255) as u8,
+        ((color.g as u16 * brightness as u16) / 255) as u8,
+        ((color.b as u16 * brightness as u16) / 255) as u8,
+    )
 }
 
 fn write_leds(driver: &mut Ws2812Esp32RmtDriver, color: RGB8, num_leds: usize) {
@@ -84,8 +98,9 @@ fn main() {
 
                         if let Ok(state) = serde_json::from_str::<CarState>(&text) {
                             let color = if state.is_on {
-                                log::info!("LED ON - Color: {}", state.color);
-                                hex_to_rgb(&state.color)
+                                log::info!("LED ON - Color: {} - Brightness: {}", state.color, state.brightness);
+                                let base_color = hex_to_rgb(&state.color);
+                                apply_brightness(base_color, state.brightness)
                             } else {
                                 log::info!("LED OFF");
                                 RGB8::new(0, 0, 0)

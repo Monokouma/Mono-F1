@@ -31,8 +31,9 @@ class WebSocketManager {
 
         if (currentState != newState) {
             carStates[name] = newState
-
+            println("newState : $newState")
             val json = Json.encodeToString(newState)
+            println("json : $json")
             connections[name]?.let { session ->
                 session.send(Frame.Text(json))
                 println("📤 Sent to $name: $json")

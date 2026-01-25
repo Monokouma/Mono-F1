@@ -82,6 +82,20 @@ fun Route.getRoutes() {
         }
     }
 
+    get("/api/test/custom/{color}") {
+        val status = call.parameters["color"] ?: "FAFAFA"
+
+        val fakeState = CarStateEntity(isOn = true, color = status, brightness = 70)
+
+        webSocketManager.updateAll(
+            mapOf(
+                "redbull" to fakeState
+            )
+        )
+        
+        call.respondText("Simulated: $status")
+    }
+
     get("/api/test/simulate/{status}") {
         val status = call.parameters["status"] ?: "idle"
 

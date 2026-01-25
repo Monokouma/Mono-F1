@@ -26,6 +26,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 ws2812-esp32-rmt-driver = { version = "0.13.1", features = ["smart-leds-trait"] }
 smart-leds = "0.4"
 
+
 [build-dependencies]
 embuild = "0.33"
 
