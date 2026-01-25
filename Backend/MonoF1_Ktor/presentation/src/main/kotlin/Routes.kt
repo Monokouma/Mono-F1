@@ -141,10 +141,9 @@ fun Route.getRoutes() {
             }
 
             else -> CarsConfig.CARS.mapValues {
-                CarStateEntity(isOn = true, color = CarsConfig.COLOR_WHITE, brightness = 70)
+                CarStateEntity(isOn = true, color = CarsConfig.CARS[it.key]?.color ?: "FAFAFA", brightness = 70)
             }
         }
-
         webSocketManager.updateAll(fakeState)
         call.respondText("Simulated: $status")
     }
