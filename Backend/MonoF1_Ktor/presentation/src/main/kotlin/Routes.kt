@@ -92,7 +92,7 @@ fun Route.getRoutes() {
                 "redbull" to fakeState
             )
         )
-        
+
         call.respondText("Simulated: $status")
     }
 
