@@ -38,7 +38,8 @@ class ManageCarUseCase(
 
         if (f1Data == null || f1Data.sessionStatus in listOf(SessionStatus.INACTIVE, SessionStatus.FINALISED)) {
             return CarsConfig.CARS.mapValues {
-                CarStateEntity(isOn = true, color = CarsConfig.COLOR_WHITE, brightness = 70)
+
+                CarStateEntity(isOn = true, color = it.value.color, brightness = 70)
             }
         }
 
